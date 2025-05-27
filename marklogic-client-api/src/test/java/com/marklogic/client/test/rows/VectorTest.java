@@ -1,5 +1,6 @@
 package com.marklogic.client.test.rows;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.marklogic.client.FailedRequestException;
 import com.marklogic.client.expression.PlanBuilder;
@@ -14,7 +15,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -143,6 +146,26 @@ class VectorTest extends AbstractOpticUpdateTest {
 	void annTopK() {
 		PlanBuilder.ModifyPlan plan = op.fromView("vectors", "persons")
 			.annTopK(10, op.col("embedding"), op.vec.vector(sampleVector), op.col("distance"), 0.5f);
+
+		System.out.println(plan.exportAs(JsonNode.class).toPrettyString());
+
+		List<RowRecord> rows = resultRows(plan);
+		assertEquals(2, rows.size(), "Verifying that annTopK worked and returned both rows from the view.");
+
+		rows.forEach(row -> {
+			float distance = row.getFloat("distance");
+			assertTrue(distance > 0, "Just verifying that annTopK both worked and put a valid value into the 'distance' column.");
+		});
+	}
+
+	@Test
+	void annTopKWithOptionsMap() {
+		Map<String, Object> options = new HashMap<>();
+		options.put("distance", "euclidean");
+		PlanBuilder.ModifyPlan plan = op.fromView("vectors", "persons")
+			.annTopK(10, op.col("embedding"), op.vec.vector(sampleVector), op.col("distance"), options);
+
+		System.out.println(plan.exportAs(JsonNode.class).toPrettyString());
 
 		List<RowRecord> rows = resultRows(plan);
 		assertEquals(2, rows.size(), "Verifying that annTopK worked and returned both rows from the view.");
